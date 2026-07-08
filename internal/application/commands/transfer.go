@@ -42,6 +42,10 @@ func (h *TransferHandler) Execute(ctx context.Context, cmd TransferCommand) (*tr
 		return nil, errors.New("failed to find source account")
 	}
 
+	if cmd.SourceAccountID == cmd.DestinationAccountID {
+		return nil, errors.New("source and destination accounts cannot be the same")
+	}
+
 	destinationAccount, err := h.accountRepo.FindByID(ctx, cmd.DestinationAccountID)
 
 	if err != nil {
