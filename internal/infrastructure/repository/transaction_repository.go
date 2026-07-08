@@ -54,7 +54,19 @@ func (r *GormTransactionRepository) Save(ctx context.Context, tx *transaction.Tr
 	return r.db.WithContext(ctx).Save(&transactionModel).Error
 }
 
-func (r *GormTransactionRepository) FindReferenceByID(ctx context.Context, referenceID string) (*transaction.Transaction, error) {
+func (r *GormTransactionRepository) FindByID(ctx context.Context, id string) (*transaction.Transaction, error) {
+
+	var transactionModel TransactionModel
+
+	err := r.db.WithContext(ctx).First(&transactionModel, "id = ?", id).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return r.mapToDomain(transactionModel), nil
+}
+
+func (r *GormTransactionRepository) FindByReferenceID(ctx context.Context, referenceID string) (*transaction.Transaction, error) {
 
 	var transactionModel TransactionModel
 
