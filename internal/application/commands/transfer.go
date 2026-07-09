@@ -32,7 +32,7 @@ func NewTransferHandler(ar account.Repository, tr transaction.Repository) *Trans
 // Faz a orquestração da transferência
 func (h *TransferHandler) Execute(ctx context.Context, cmd TransferCommand) (*transaction.Transaction, error) {
 
-	existingTx, _ := h.transactionRepo.FindByReferenceID(ctx, cmd.SourceAccountID)
+	existingTx, _ := h.transactionRepo.FindByReferenceID(ctx, cmd.ReferenceID)
 	if existingTx != nil {
 		return existingTx, nil
 	}
