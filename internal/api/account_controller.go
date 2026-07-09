@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"time"
+	"transactionhub/internal/application/dto"
 	"transactionhub/internal/domain/account"
 	"transactionhub/internal/infrastructure/repository"
 
@@ -51,8 +52,36 @@ func (ac *AccountController) CreateAccount(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "Account succesful created!",
-		"account": newAccount,
+		"message": "Account created successfully!",
+		"account": dto.AccountResponse{
+			ID:               newAccount.ID,
+			ClientID:         newAccount.ClientID,
+			Balance:          newAccount.Balance,
+			ReservedBalance:  newAccount.ReservedBalance,
+			AvailableBalance: newAccount.AvailableBalance(),
+			CreditLimit:      newAccount.CreditLimit,
+			Status:           string(newAccount.Status),
+		},
 	})
 
+}
+
+func (ac *AccountController) GetAccount(c *gin.Context) {
+	id := c.Param("id")
+
+	acc, err := ac.repo.FindByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.AccountResponse{
+		ID:               acc.ID,
+		ClientID:         acc.ClientID,
+		Balance:          acc.Balance,
+		ReservedBalance:  acc.ReservedBalance,
+		AvailableBalance: acc.AvailableBalance(),
+		CreditLimit:      acc.CreditLimit,
+		Status:           string(acc.Status),
+	})
 }
