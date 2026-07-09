@@ -18,6 +18,7 @@ func SetupRouter(accountController *api.AccountController, transactionController
 	})
 
 	router.POST("/accounts", accountController.CreateAccount)
+	router.GET("/accounts/:id", accountController.GetAccount)
 	router.POST("/transactions", transactionController.ProcessTransaction)
 
 	return router
