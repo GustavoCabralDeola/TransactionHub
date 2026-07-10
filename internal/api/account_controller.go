@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 	"time"
-	"transactionhub/internal/application/dto"
+	"transactionhub/internal/api/dto"
 	"transactionhub/internal/domain/account"
 	"transactionhub/internal/infrastructure/repository"
 
