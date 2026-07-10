@@ -5,6 +5,7 @@ import (
 	"transactionhub/internal/api"
 	"transactionhub/internal/api/routes"
 	"transactionhub/internal/application/commands"
+	"transactionhub/internal/infrastructure/event"
 	"transactionhub/internal/infrastructure/repository"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +19,8 @@ type Application struct {
 func Build(db *gorm.DB) *Application {
 	accountRepo := repository.NewGormAccountRepository(db)
 	transactionRepo := repository.NewGormTransactionRepository(db)
+
+	publisher := event.NewLogEventPublisher(3)
 
 	transferHandler := commands.NewTransferHandler(accountRepo, transactionRepo)
 	reversalHandler := commands.NewReversalHandler(accountRepo, transactionRepo)
@@ -35,6 +38,7 @@ func Build(db *gorm.DB) *Application {
 		debitHandler,
 		reserveHandler,
 		captureHandler,
+		publisher,
 	)
 
 	router := routes.SetupRouter(accountController, transactionController)
