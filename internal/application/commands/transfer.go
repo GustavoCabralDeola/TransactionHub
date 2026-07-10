@@ -22,6 +22,7 @@ type TransferHandler struct {
 	transactionRepo transaction.Repository
 }
 
+// NewTransferHandler cria um handler de transferência com as dependências injetadas.
 func NewTransferHandler(ar account.Repository, tr transaction.Repository) *TransferHandler {
 	return &TransferHandler{
 		accountRepo:     ar,
@@ -29,7 +30,7 @@ func NewTransferHandler(ar account.Repository, tr transaction.Repository) *Trans
 	}
 }
 
-// Faz a orquestração da transferência
+// Realiza a transferência entre duas contas de forma atômica, debita da conta de origem e credita na conta de destino
 func (h *TransferHandler) Execute(ctx context.Context, cmd TransferCommand) (*transaction.Transaction, error) {
 
 	existingTx, _ := h.transactionRepo.FindByReferenceID(ctx, cmd.ReferenceID)

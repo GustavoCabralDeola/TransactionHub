@@ -19,6 +19,7 @@ type ReversalHandler struct {
 	transactionRepo transaction.Repository
 }
 
+// NewReversalHandler cria um handler de estorno com as dependências injetadas.
 func NewReversalHandler(ar account.Repository, tr transaction.Repository) *ReversalHandler {
 
 	return &ReversalHandler{
@@ -27,6 +28,7 @@ func NewReversalHandler(ar account.Repository, tr transaction.Repository) *Rever
 	}
 }
 
+// Execute estorna uma transação anterior, reverte crédito com débito e vice-versa e garante idempotência via reference_id.
 func (h *ReversalHandler) Execute(ctx context.Context, cmd ReversalCommand) (*transaction.Transaction, error) {
 	existingTx, _ := h.transactionRepo.FindByReferenceID(ctx, cmd.ReferenceID)
 	if existingTx != nil {
