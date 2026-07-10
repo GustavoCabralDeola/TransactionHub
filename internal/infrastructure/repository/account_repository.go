@@ -16,11 +16,12 @@ func NewGormAccountRepository(db *gorm.DB) *GormAccountRepository {
 }
 
 type AccountModel struct {
-	ID              string `gorm: "primary_key; column:id"`
-	Balance         int64  `gorm: "column:balance"`
-	ReservedBalance int64  `gorm: "column:reserved_balance"`
-	CreditLimit     int64  `gorm: "column:credit_limit"`
-	Status          string `gorm: "column:status"`
+	ID              string `gorm:"column:id;primaryKey"`
+	ClientID        string `gorm:"column:client_id"`
+	Balance         int64  `gorm:"column:balance"`
+	ReservedBalance int64  `gorm:"column:reserved_balance"`
+	CreditLimit     int64  `gorm:"column:credit_limit"`
+	Status          string `gorm:"column:status"`
 }
 
 func (AccountModel) TableName() string {
@@ -39,6 +40,7 @@ func (repo *GormAccountRepository) FindByID(ctx context.Context, id string) (*ac
 
 	return &account.Account{
 		ID:              accountModel.ID,
+		ClientID:        accountModel.ClientID,
 		Balance:         accountModel.Balance,
 		ReservedBalance: accountModel.ReservedBalance,
 		CreditLimit:     accountModel.CreditLimit,
@@ -46,16 +48,17 @@ func (repo *GormAccountRepository) FindByID(ctx context.Context, id string) (*ac
 	}, nil
 }
 
-func (r *GormAccountRepository) Save(ctx context.Context, account *account.Account) error {
+func (r *GormAccountRepository) Save(ctx context.Context, acc *account.Account) error {
 
 	accountModel := AccountModel{
-
-		ID:              account.ID,
-		Balance:         account.Balance,
-		ReservedBalance: account.ReservedBalance,
-		CreditLimit:     account.CreditLimit,
-		Status:          string(account.Status),
+		ID:              acc.ID,
+		ClientID:        acc.ClientID,
+		Balance:         acc.Balance,
+		ReservedBalance: acc.ReservedBalance,
+		CreditLimit:     acc.CreditLimit,
+		Status:          string(acc.Status),
 	}
 
-	return r.db.WithContext(ctx).Save(accountModel).Error
+	// GORM requer um ponteiro (&) para operações Save/Update funcionarem perfeitamente
+	return r.db.WithContext(ctx).Save(&accountModel).Error
 }

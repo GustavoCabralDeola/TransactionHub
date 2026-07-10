@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 	"transactionhub/internal/domain/transaction"
 
 	"gorm.io/gorm"
@@ -18,40 +19,20 @@ func NewGormTransactionRepository(db *gorm.DB) *GormTransactionRepository {
 }
 
 type TransactionModel struct {
-	ID           string `gorm: "primary_key; column:id"`
-	AccountID    string `gorm: "column:account_id"`
-	Amount       int64  `gorm: "column:amount"`
-	Currency     string `gorm: "column:currency"`
-	ReferenceID  string `gorm: "column:reference_id"`
-	Status       string `gorm: "column:status"`
-	Metadata     []byte `gorm: "column:metadata"`
-	ErrorMessage string `gorm: "column:error_message"`
+	ID           string    `gorm:"column:id;primaryKey"`
+	AccountID    string    `gorm:"column:account_id"`
+	Operation    string    `gorm:"column:operation"`
+	Amount       int64     `gorm:"column:amount"`
+	Currency     string    `gorm:"column:currency"`
+	ReferenceID  string    `gorm:"column:reference_id"`
+	Status       string    `gorm:"column:status"`
+	Metadata     []byte    `gorm:"column:metadata"`
+	ErrorMessage string    `gorm:"column:error_message"`
+	Timestamp    time.Time `gorm:"column:timestamp"`
 }
 
 func (TransactionModel) TableName() string {
 	return "transactions"
-}
-
-func (r *GormTransactionRepository) Save(ctx context.Context, tx *transaction.Transaction) error {
-	metaBytes, _ := json.Marshal(tx.Metadata)
-
-	var errorMessage string
-	if tx.ErrorMessage != nil {
-		errorMessage = *tx.ErrorMessage
-	}
-
-	transactionModel := &TransactionModel{
-		ID:           tx.ID,
-		AccountID:    tx.AccountID,
-		Amount:       tx.Amount,
-		Currency:     tx.Currency,
-		ReferenceID:  tx.ReferenceID,
-		Status:       string(tx.Status),
-		Metadata:     metaBytes,
-		ErrorMessage: errorMessage,
-	}
-
-	return r.db.WithContext(ctx).Save(&transactionModel).Error
 }
 
 func (r *GormTransactionRepository) FindByID(ctx context.Context, id string) (*transaction.Transaction, error) {
@@ -80,6 +61,30 @@ func (r *GormTransactionRepository) FindByReferenceID(ctx context.Context, refer
 	return r.mapToDomain(transactionModel), nil
 }
 
+func (r *GormTransactionRepository) Save(ctx context.Context, tx *transaction.Transaction) error {
+	metaBytes, _ := json.Marshal(tx.Metadata)
+
+	var errorMessage string
+	if tx.ErrorMessage != nil {
+		errorMessage = *tx.ErrorMessage
+	}
+
+	transactionModel := &TransactionModel{
+		ID:           tx.ID,
+		AccountID:    tx.AccountID,
+		Operation:    string(tx.Operation),
+		Amount:       tx.Amount,
+		Currency:     tx.Currency,
+		ReferenceID:  tx.ReferenceID,
+		Status:       string(tx.Status),
+		Metadata:     metaBytes,
+		ErrorMessage: errorMessage,
+		Timestamp:    tx.Timestamp,
+	}
+
+	return r.db.WithContext(ctx).Save(&transactionModel).Error
+}
+
 //Auxiliar
 
 func (r *GormTransactionRepository) mapToDomain(transactionModel TransactionModel) *transaction.Transaction {
@@ -98,11 +103,13 @@ func (r *GormTransactionRepository) mapToDomain(transactionModel TransactionMode
 	return &transaction.Transaction{
 		ID:           transactionModel.ID,
 		AccountID:    transactionModel.AccountID,
+		Operation:    transaction.OperationType(transactionModel.Operation),
 		Amount:       transactionModel.Amount,
 		Currency:     transactionModel.Currency,
 		ReferenceID:  transactionModel.ReferenceID,
 		Status:       transaction.Status(transactionModel.Status),
 		Metadata:     metaData,
 		ErrorMessage: errMsgPtr,
+		Timestamp:    transactionModel.Timestamp,
 	}
 }
