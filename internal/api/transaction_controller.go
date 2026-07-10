@@ -41,16 +41,36 @@ func NewTransactionController(
 	}
 }
 
+// TransactionRequest representa o payload de uma operação financeira
 type TransactionRequest struct {
-	AccountID             string `json:"account_id" binding:"required"`
-	DestinationAccountID  string `json:"destination_account_id"`
-	OriginalTransactionID string `json:"original_transaction_id"`
-	Operation             string `json:"operation" binding:"required"`
-	Amount                int64  `json:"amount" binding:"required,gt=0"`
-	Currency              string `json:"currency" binding:"required"`
-	ReferenceID           string `json:"reference_id" binding:"required"`
+	AccountID             string `json:"account_id" binding:"required" example:"ACC-001"`
+	DestinationAccountID  string `json:"destination_account_id" example:"ACC-002"`
+	OriginalTransactionID string `json:"original_transaction_id" example:"a1b2c3d4-..."`
+	Operation             string `json:"operation" binding:"required" example:"credit"`
+	Amount                int64  `json:"amount" binding:"required,gt=0" example:"100000"`
+	Currency              string `json:"currency" binding:"required" example:"BRL"`
+	ReferenceID           string `json:"reference_id" binding:"required" example:"TXN-001"`
 }
 
+// ProcessTransaction godoc
+//
+//	@Summary		Process a financial transaction
+//	@Description	Executes a financial operation on an account. Supported operations: credit, debit, reserve, capture, transfer and reversal.
+//	@Description
+//	@Description	**credit**: Adds funds to the account balance.
+//	@Description	**debit**: Removes funds from the balance (uses available balance + credit limit).
+//	@Description	**reserve**: Moves funds from available balance to reserved balance.
+//	@Description	**capture**: Confirms a reservation, removing it from the reserved balance.
+//	@Description	**transfer**: Moves funds between two accounts (requires destination_account_id).
+//	@Description	**reversal**: Reverses a previous transaction (requires original_transaction_id).
+//	@Tags			transactions
+//	@Accept			json
+//	@Produce		json
+//	@Param			transaction	body		TransactionRequest		true	"Transaction data"
+//	@Success		201			{object}	map[string]interface{}	"Transaction processed successfully"
+//	@Failure		400			{object}	map[string]interface{}	"Invalid payload or missing required fields"
+//	@Failure		422			{object}	map[string]interface{}	"Transaction could not be processed (e.g. insufficient balance)"
+//	@Router			/transactions [post]
 func (tc *TransactionController) ProcessTransaction(c *gin.Context) {
 	var req TransactionRequest
 

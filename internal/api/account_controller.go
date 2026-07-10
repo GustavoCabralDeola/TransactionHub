@@ -18,15 +18,27 @@ func NewAccountController(repo *repository.GormAccountRepository) *AccountContro
 	return &AccountController{repo: repo}
 }
 
+// Representa o payload para criação de conta
 type CreateAccountRequest struct {
-	ID              string `json:"id" binding:"required"`
-	ClientID        string `json:"client_id" binding:"required"`
-	Balance         int64  `json:"balance"`
-	ReservedBalance int64  `json:"reserved_balance"`
-	CreditLimit     int64  `json:"credit_limit"`
-	Status          string `json:"status" binding:"required"`
+	ID          string `json:"id" binding:"required" example:"ACC-010"`
+	ClientID    string `json:"client_id" binding:"required" example:"CLI-001"`
+	Balance     int64  `json:"balance" example:"1000"`
+	CreditLimit int64  `json:"credit_limit" example:"50000"`
+	Status      string `json:"status" binding:"required" example:"active"`
 }
 
+// CreateAccount godoc
+//
+//	@Summary		Create a new account
+//	@Description	Creates a bank account with initial balance, credit limit, and status
+//	@Tags			accounts
+//	@Accept			json
+//	@Produce		json
+//	@Param			account	body		CreateAccountRequest	true	"Account data"
+//	@Success		201		{object}	map[string]interface{}	"Account created successfully"
+//	@Failure		400		{object}	map[string]interface{}	"Invalid payload"
+//	@Failure		500		{object}	map[string]interface{}	"Internal error while saving to database"
+//	@Router			/accounts [post]
 func (ac *AccountController) CreateAccount(c *gin.Context) {
 	var request CreateAccountRequest
 
@@ -39,7 +51,7 @@ func (ac *AccountController) CreateAccount(c *gin.Context) {
 		ID:              request.ID,
 		ClientID:        request.ClientID,
 		Balance:         request.Balance,
-		ReservedBalance: request.ReservedBalance,
+		ReservedBalance: 0,
 		CreditLimit:     request.CreditLimit,
 		Status:          account.Status(request.Status),
 		CreatedAt:       time.Now(),
@@ -47,8 +59,8 @@ func (ac *AccountController) CreateAccount(c *gin.Context) {
 	}
 
 	if err := ac.repo.Save(c.Request.Context(), newAccount); err != nil {
-
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save in the database", "details": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
@@ -63,9 +75,18 @@ func (ac *AccountController) CreateAccount(c *gin.Context) {
 			Status:           string(newAccount.Status),
 		},
 	})
-
 }
 
+// GetAccount godoc
+//
+//	@Summary		Get an account
+//	@Description	Returns the full data and current balances of an account by ID
+//	@Tags			accounts
+//	@Produce		json
+//	@Param			id	path		string					true	"Account ID (e.g. ACC-001)"
+//	@Success		200	{object}	dto.AccountResponse		"Account data"
+//	@Failure		404	{object}	map[string]interface{}	"Account not found"
+//	@Router			/accounts/{id} [get]
 func (ac *AccountController) GetAccount(c *gin.Context) {
 	id := c.Param("id")
 
