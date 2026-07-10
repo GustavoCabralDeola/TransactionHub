@@ -2,7 +2,7 @@
 
 Sistema de processamento de transações financeiras construído em **Go**, implementando um núcleo transacional robusto para operações de crédito, débito, reserva, captura, estorno e transferência entre contas.
 
-Este projeto foi construído focando nos requisitos de consistência, concorrência, idempotência e mensageria assíncrona exigidos em desafios técnicos de gateways de pagamento e fintechs (como a PagueVeloz).
+Este projeto foi construído focando nos requisitos de consistência, concorrência, idempotência e mensageria assíncrona exigidos em desafios técnicos de gateways de pagamento.
 
 ---
 
