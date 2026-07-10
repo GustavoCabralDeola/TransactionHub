@@ -82,13 +82,13 @@ docker-compose up -d --build
 
 ### Opção 2: Localmente via Golang Nativo
 
-1. Defina as variáveis no console local ou crie um arquivo `.env`:
+1. Defina as variáveis seguindo o modelo do `.envexample`, no console local ou crie um arquivo `.env`:
 ```bash
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_USER=transactionhub
-export DB_PASSWORD=transactionhub
-export DB_NAME=transactionhub
+export DB_HOST=YOURHOST
+export DB_USER=YOUR_DBUSER
+export DB_PASSWORD=YOUR_DBPASSWORD
+export DB_NAME=YOUR_DBNAME
+export DB_PORT=YOUR_PORT
 ```
 2. Baixe os recursos e rode o binário do código fonte:
 ```bash
