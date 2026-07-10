@@ -7,6 +7,7 @@ import (
 	"transactionhub/internal/application/dto"
 	"transactionhub/internal/domain/account"
 	"transactionhub/internal/domain/transaction"
+	"transactionhub/internal/infrastructure/event"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,6 +20,7 @@ type TransactionController struct {
 	debitHandler    *commands.DebitHandler
 	reserveHandler  *commands.ReserveHandler
 	captureHandler  *commands.CaptureHandler
+	publisher       event.EventPublisher
 }
 
 func NewTransactionController(
@@ -29,6 +31,7 @@ func NewTransactionController(
 	dh *commands.DebitHandler,
 	resh *commands.ReserveHandler,
 	caph *commands.CaptureHandler,
+	pub event.EventPublisher,
 ) *TransactionController {
 	return &TransactionController{
 		accountRepo:     ar,
@@ -38,10 +41,11 @@ func NewTransactionController(
 		debitHandler:    dh,
 		reserveHandler:  resh,
 		captureHandler:  caph,
+		publisher:       pub,
 	}
 }
 
-// TransactionRequest representa o payload de uma operação financeira
+// Representa o payload de uma operação financeira
 type TransactionRequest struct {
 	AccountID             string `json:"account_id" binding:"required" example:"ACC-001"`
 	DestinationAccountID  string `json:"destination_account_id" example:"ACC-002"`
@@ -94,6 +98,7 @@ func (tc *TransactionController) ProcessTransaction(c *gin.Context) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error(), "transaction": tc.buildResponse(ctx, tx)})
 			return
 		}
+		tc.publishEvent(tx)
 		c.JSON(http.StatusCreated, gin.H{"message": "Credit processed successfully!", "transaction": tc.buildResponse(ctx, tx)})
 
 	case "debit":
@@ -108,6 +113,7 @@ func (tc *TransactionController) ProcessTransaction(c *gin.Context) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error(), "transaction": tc.buildResponse(ctx, tx)})
 			return
 		}
+		tc.publishEvent(tx)
 		c.JSON(http.StatusCreated, gin.H{"message": "Debit processed successfully!", "transaction": tc.buildResponse(ctx, tx)})
 
 	case "reserve":
@@ -122,6 +128,7 @@ func (tc *TransactionController) ProcessTransaction(c *gin.Context) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error(), "transaction": tc.buildResponse(ctx, tx)})
 			return
 		}
+		tc.publishEvent(tx)
 		c.JSON(http.StatusCreated, gin.H{"message": "Reserve processed successfully!", "transaction": tc.buildResponse(ctx, tx)})
 
 	case "capture":
@@ -136,6 +143,7 @@ func (tc *TransactionController) ProcessTransaction(c *gin.Context) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error(), "transaction": tc.buildResponse(ctx, tx)})
 			return
 		}
+		tc.publishEvent(tx)
 		c.JSON(http.StatusCreated, gin.H{"message": "Capture processed successfully!", "transaction": tc.buildResponse(ctx, tx)})
 
 	case "transfer":
@@ -155,6 +163,7 @@ func (tc *TransactionController) ProcessTransaction(c *gin.Context) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error(), "transaction": tc.buildResponse(ctx, tx)})
 			return
 		}
+		tc.publishEvent(tx)
 		c.JSON(http.StatusCreated, gin.H{"message": "Transfer processed successfully!", "transaction": tc.buildResponse(ctx, tx)})
 
 	case "reversal":
@@ -171,10 +180,17 @@ func (tc *TransactionController) ProcessTransaction(c *gin.Context) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error(), "transaction": tc.buildResponse(ctx, tx)})
 			return
 		}
+		tc.publishEvent(tx)
 		c.JSON(http.StatusCreated, gin.H{"message": "Reversal processed successfully!", "transaction": tc.buildResponse(ctx, tx)})
 
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid operation. Valid options: credit, debit, reserve, capture, transfer, reversal"})
+	}
+}
+
+func (tc *TransactionController) publishEvent(tx *transaction.Transaction) {
+	if tx != nil && tc.publisher != nil {
+		go tc.publisher.Publish(context.Background(), "transaction_events", tx)
 	}
 }
 
@@ -196,7 +212,6 @@ func (tc *TransactionController) buildResponse(ctx context.Context, tx *transact
 		Timestamp:     tx.Timestamp,
 	}
 
-	// Busca o saldo atual da conta para incluir na resposta
 	if acc, err := tc.accountRepo.FindByID(ctx, tx.AccountID); err == nil {
 		resp.Balance = acc.Balance
 		resp.ReservedBalance = acc.ReservedBalance
