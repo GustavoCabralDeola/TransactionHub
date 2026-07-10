@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: transactionhub_db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: transactionhub
+      POSTGRES_PASSWORD: transactionhub
+      POSTGRES_DB: transactionhub
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U transactionhub -d transactionhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: transactionhub_api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      GIN_MODE: release
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: transactionhub
+      DB_PASSWORD: transactionhub
+      DB_NAME: transactionhub
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
