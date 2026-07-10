@@ -1,0 +1,244 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/accounts": {
+            "post": {
+                "description": "Creates a bank account with initial balance, credit limit, and status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "Create a new account",
+                "parameters": [
+                    {
+                        "description": "Account data",
+                        "name": "account",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_api.CreateAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Account created successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid payload",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error while saving to database",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/accounts/{id}": {
+            "get": {
+                "description": "Returns the full data and current balances of an account by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "Get an account",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Account ID (e.g. ACC-001)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Account data",
+                        "schema": {
+                            "$ref": "#/definitions/transactionhub_internal_api_dto.AccountResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Account not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions": {
+            "post": {
+                "description": "Executes a financial operation on an account. Supported operations: credit, debit, reserve, capture, transfer and reversal.\n\n**credit**: Adds funds to the account balance.\n**debit**: Removes funds from the balance (uses available balance + credit limit).\n**reserve**: Moves funds from available balance to reserved balance.\n**capture**: Confirms a reservation, removing it from the reserved balance.\n**transfer**: Moves funds between two accounts (requires destination_account_id).\n**reversal**: Reverses a previous transaction (requires original_transaction_id).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Process a financial transaction",
+                "parameters": [
+                    {
+                        "description": "Transaction data",
+                        "name": "transaction",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_api.TransactionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Transaction processed successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid payload or missing required fields",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "422": {
+                        "description": "Transaction could not be processed (e.g. insufficient balance)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "internal_api.CreateAccountRequest": {
+            "type": "object",
+            "required": [
+                "client_id",
+                "id",
+                "status"
+            ],
+            "properties": {
+                "balance": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "client_id": {
+                    "type": "string",
+                    "example": "CLI-001"
+                },
+                "credit_limit": {
+                    "type": "integer",
+                    "example": 50000
+                },
+                "id": {
+                    "type": "string",
+                    "example": "ACC-001"
+                },
+                "reserved_balance": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "status": {
+                    "type": "string",
+                    "example": "active"
+                }
+            }
+        },
+        "internal_api.TransactionRequest": {
+            "type": "object",
+            "required": [
+                "account_id",
+                "amount",
+                "currency",
+                "operation",
+                "reference_id"
+            ],
+            "properties": {
+                "account_id": {
+                    "type": "string",
+                    "example": "ACC-001"
+                },
+                "amount": {
+                    "type": "integer",
+                    "example": 100000
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "BRL"
+                },
+                "destination_account_id": {
+                    "type": "string",
+                    "example": "ACC-002"
+                },
+                "operation": {
+                    "type": "string",
+                    "example": "credit"
+                },
+                "original_transaction_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-..."
+                },
+                "reference_id": {
+                    "type": "string",
+                    "example": "TXN-001"
+                }
+            }
+        },
+        "transactionhub_internal_api_dto.AccountResponse": {
+            "type": "object",
+            "properties": {
+                "available_balance": {
+                    "type": "integer"
+                },
+                "balance": {
+                    "type": "integer"
+                },
+                "client_id": {
+                    "type": "string"
+                },
+                "credit_limit": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "reserved_balance": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

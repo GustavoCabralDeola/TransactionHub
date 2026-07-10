@@ -1,0 +1,173 @@
+definitions:
+  api.CreateAccountRequest:
+    properties:
+      balance:
+        example: 1000
+        type: integer
+      client_id:
+        example: CLIENTE-VIP-01
+        type: string
+      credit_limit:
+        example: 50000
+        type: integer
+      id:
+        example: ACC-010
+        type: string
+      status:
+        example: active
+        type: string
+    required:
+    - client_id
+    - id
+    - status
+    type: object
+  api.TransactionRequest:
+    properties:
+      account_id:
+        example: ACC-001
+        type: string
+      amount:
+        example: 100000
+        type: integer
+      currency:
+        example: BRL
+        type: string
+      destination_account_id:
+        example: ACC-002
+        type: string
+      operation:
+        example: credit
+        type: string
+      original_transaction_id:
+        example: a1b2c3d4-...
+        type: string
+      reference_id:
+        example: TXN-001
+        type: string
+    required:
+    - account_id
+    - amount
+    - currency
+    - operation
+    - reference_id
+    type: object
+  dto.AccountResponse:
+    properties:
+      available_balance:
+        type: integer
+      balance:
+        type: integer
+      client_id:
+        type: string
+      credit_limit:
+        type: integer
+      id:
+        type: string
+      reserved_balance:
+        type: integer
+      status:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /accounts:
+    post:
+      consumes:
+      - application/json
+      description: Creates a bank account with initial balance, credit limit, and
+        status
+      parameters:
+      - description: Account data
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Account created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal error while saving to database
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new account
+      tags:
+      - accounts
+  /accounts/{id}:
+    get:
+      description: Returns the full data and current balances of an account by ID
+      parameters:
+      - description: Account ID (e.g. ACC-001)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Account data
+          schema:
+            $ref: '#/definitions/dto.AccountResponse'
+        "404":
+          description: Account not found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get an account
+      tags:
+      - accounts
+  /transactions:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Executes a financial operation on an account. Supported operations: credit, debit, reserve, capture, transfer and reversal.
+
+        **credit**: Adds funds to the account balance.
+        **debit**: Removes funds from the balance (uses available balance + credit limit).
+        **reserve**: Moves funds from available balance to reserved balance.
+        **capture**: Confirms a reservation, removing it from the reserved balance.
+        **transfer**: Moves funds between two accounts (requires destination_account_id).
+        **reversal**: Reverses a previous transaction (requires original_transaction_id).
+      parameters:
+      - description: Transaction data
+        in: body
+        name: transaction
+        required: true
+        schema:
+          $ref: '#/definitions/api.TransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Transaction processed successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid payload or missing required fields
+          schema:
+            additionalProperties: true
+            type: object
+        "422":
+          description: Transaction could not be processed (e.g. insufficient balance)
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Process a financial transaction
+      tags:
+      - transactions
+swagger: "2.0"
