@@ -20,16 +20,28 @@ func Build(db *gorm.DB) *Application {
 	transactionRepo := repository.NewGormTransactionRepository(db)
 
 	transferHandler := commands.NewTransferHandler(accountRepo, transactionRepo)
+	reversalHandler := commands.NewReversalHandler(accountRepo, transactionRepo)
+	creditHandler := commands.NewCreditHandler(accountRepo, transactionRepo)
+	debitHandler := commands.NewDebitHandler(accountRepo, transactionRepo)
+	reserveHandler := commands.NewReserveHandler(accountRepo, transactionRepo)
+	captureHandler := commands.NewCaptureHandler(accountRepo, transactionRepo)
 
 	accountController := api.NewAccountController(accountRepo)
-	transactionController := api.NewTransactionController(transferHandler)
+	transactionController := api.NewTransactionController(
+		accountRepo,
+		transferHandler,
+		reversalHandler,
+		creditHandler,
+		debitHandler,
+		reserveHandler,
+		captureHandler,
+	)
 
 	router := routes.SetupRouter(accountController, transactionController)
 
 	return &Application{
 		Router: router,
 	}
-
 }
 
 func (app *Application) Start(port string) {
