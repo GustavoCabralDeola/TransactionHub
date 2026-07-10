@@ -29,7 +29,6 @@ func NewReserveHandler(ar account.Repository, tr transaction.Repository) *Reserv
 }
 
 func (h *ReserveHandler) Execute(ctx context.Context, cmd ReserveCommand) (*transaction.Transaction, error) {
-	// Trava a conta durante toda a operação para evitar Race Conditions (concorrência)
 	defer LockAccount(cmd.AccountID)()
 
 	existing, _ := h.transactionRepo.FindByReferenceID(ctx, cmd.ReferenceID)

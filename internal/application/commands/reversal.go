@@ -21,38 +21,42 @@ type ReversalHandler struct {
 
 // NewReversalHandler cria um handler de estorno com as dependências injetadas.
 func NewReversalHandler(ar account.Repository, tr transaction.Repository) *ReversalHandler {
-
 	return &ReversalHandler{
 		accountRepo:     ar,
 		transactionRepo: tr,
 	}
 }
 
-// Execute estorna uma transação anterior, reverte crédito com débito e vice-versa e garante idempotência via reference_id.
+// Execute estorna uma transação anterior, reverte crédito com débito e vice-versa e garante idempotência via reference_id
 func (h *ReversalHandler) Execute(ctx context.Context, cmd ReversalCommand) (*transaction.Transaction, error) {
+
 	existingTx, _ := h.transactionRepo.FindByReferenceID(ctx, cmd.ReferenceID)
 	if existingTx != nil {
 		return existingTx, nil
 	}
 
-	originalTx, err := h.transactionRepo.FindByReferenceID(ctx, cmd.OriginalTransactionID)
+	originalTx, err := h.transactionRepo.FindByID(ctx, cmd.OriginalTransactionID)
 	if err != nil {
 		return nil, errors.New("original transaction not found")
 	}
 
 	if originalTx.Status != transaction.Sucess {
-
 		return originalTx, errors.New("only successful transactions can be reversed")
 	}
 
-	acc, err := h.accountRepo.FindByID(ctx, originalTx.AccountID)
-	if err != nil {
-		return nil, errors.New("account not found")
+	if originalTx.Operation == transaction.Transfer {
+		destID, ok := originalTx.Metadata["destination_account_id"].(string)
+		if !ok || destID == "" {
+			return nil, errors.New("could not determine destination account for transfer reversal")
+		}
+		defer LockTransferAccounts(originalTx.AccountID, destID)()
+	} else {
+		defer LockAccount(originalTx.AccountID)()
 	}
 
 	tx := transaction.NewTransaction(
 		uuid.New().String(),
-		acc.ID,
+		originalTx.AccountID,
 		transaction.Reversal,
 		originalTx.Amount,
 		originalTx.Currency,
@@ -60,27 +64,68 @@ func (h *ReversalHandler) Execute(ctx context.Context, cmd ReversalCommand) (*tr
 		map[string]interface{}{"original_transaction_id": originalTx.ID},
 	)
 
-	if originalTx.Operation == transaction.Credit {
-		err = acc.Debit(originalTx.Amount)
+	switch originalTx.Operation {
+	case transaction.Credit:
 
-	} else if originalTx.Operation == transaction.Debit {
-		err = acc.Credit(originalTx.Amount)
-	} else {
+		acc, err := h.accountRepo.FindByID(ctx, originalTx.AccountID)
+		if err != nil {
+			return nil, errors.New("account not found")
+		}
+		if err := acc.Debit(originalTx.Amount); err != nil {
+			tx.MarkAsFailed(err.Error())
+			_ = h.transactionRepo.Save(ctx, tx)
+			return tx, err
+		}
+		tx.MarkAsSucess()
+		_ = h.accountRepo.Save(ctx, acc)
+
+	case transaction.Debit:
+
+		acc, err := h.accountRepo.FindByID(ctx, originalTx.AccountID)
+		if err != nil {
+			return nil, errors.New("account not found")
+		}
+		if err := acc.Credit(originalTx.Amount); err != nil {
+			tx.MarkAsFailed(err.Error())
+			_ = h.transactionRepo.Save(ctx, tx)
+			return tx, err
+		}
+		tx.MarkAsSucess()
+		_ = h.accountRepo.Save(ctx, acc)
+
+	case transaction.Transfer:
+
+		destID := originalTx.Metadata["destination_account_id"].(string)
+
+		sourceAcc, err := h.accountRepo.FindByID(ctx, originalTx.AccountID)
+		if err != nil {
+			return nil, errors.New("source account not found")
+		}
+		destAcc, err := h.accountRepo.FindByID(ctx, destID)
+		if err != nil {
+			return nil, errors.New("destination account not found")
+		}
+
+		if err := destAcc.Debit(originalTx.Amount); err != nil {
+			tx.MarkAsFailed(err.Error())
+			_ = h.transactionRepo.Save(ctx, tx)
+			return tx, err
+		}
+
+		if err := sourceAcc.Credit(originalTx.Amount); err != nil {
+			tx.MarkAsFailed(err.Error())
+			_ = h.transactionRepo.Save(ctx, tx)
+			return tx, err
+		}
+
+		tx.MarkAsSucess()
+		_ = h.accountRepo.Save(ctx, sourceAcc)
+		_ = h.accountRepo.Save(ctx, destAcc)
+
+	default:
 		return nil, errors.New("cannot reverse this operation type")
 	}
 
-	if err != nil {
-		tx.MarkAsFailed(err.Error())
-		_ = h.transactionRepo.Save(ctx, tx)
-
-		return tx, err
-
-	}
-
-	tx.MarkAsSucess()
-
-	_ = h.accountRepo.Save(ctx, acc)
-	err = h.transactionRepo.Save(ctx, tx)
-
+	_ = h.transactionRepo.Save(ctx, tx)
 	return tx, nil
 }
