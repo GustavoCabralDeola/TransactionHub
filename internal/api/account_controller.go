@@ -46,6 +46,11 @@ func (ac *AccountController) CreateAccount(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Payload", "details": err.Error()})
 		return
 	}
+	
+	if _, err := ac.repo.FindByID(c.Request.Context(), request.ID); err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Account already exists"})
+		return
+	}
 
 	newAccount := &account.Account{
 		ID:              request.ID,
